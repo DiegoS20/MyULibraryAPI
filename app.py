@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS, cross_origin
 from passlib.hash import sha256_crypt
+from sqlalchemy.sql import func
+from sqlalchemy import DateTime, select
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:admin@localhost/myulibrary'
@@ -11,6 +13,43 @@ app.secret_key = 'secret string'
 CORS(app)
 
 db = SQLAlchemy(app)
+
+
+@cross_origin()
+@app.route("/login", methods = ["POST"])
+def login():
+    data = request.json
+
+    email = data["email"]
+    password = data["password"]
+
+    stmt = select(User).where(User.email == email)
+    users_obj = db.session.execute(stmt)
+
+    users = []
+    for user in users_obj.scalars():
+        users.append({
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "role": user.role,
+            "password_hash": user.password 
+        })
+    
+    user = users[0]
+
+    password_correct = sha256_crypt.verify(password, user["password_hash"])
+
+    del user["password_hash"]
+    response = {
+        "success": False,
+        "user": user
+    }
+    if (password_correct):
+        response["success"] = True
+
+    return jsonify(response)
 
 @cross_origin()
 @app.route("/get_users", methods = ["GET"])
