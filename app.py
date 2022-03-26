@@ -157,6 +157,16 @@ def add_request():
     student_id = data["student_id"]
     book_id = data["book_id"]
 
+    stmt = select(BookRequested).where(BookRequested.book_id == book_id).where(BookRequested.student_id == student_id)
+    book_already_requested = db.session.execute(stmt)
+    there_is_any_book = len([a for a in book_already_requested.scalars()])
+
+    if there_is_any_book > 0:
+        return jsonify({
+            "success": False,
+            "response": "You already have this book"
+        })
+
     book_requested = BookRequested(student_id = student_id, book_id = book_id, state = "borrowed")
     db.session.add(book_requested)
     db.session.commit()
@@ -199,11 +209,27 @@ def get_books_requested():
                     "author": book_obj.author,
                     "genre": book_obj.genre,
                 })
-                
+
     return jsonify({
         "success": True,
         "books": books
     })
+
+@cross_origin()
+@app.route("/get_book_stock", methods = ["POST"])
+def get_book_stock():
+    data = request.json
+
+    id_book = data["id_book"]
+
+    book = Book.query.get(id_book)
+    if book is None:
+        abort(404)
+    else:
+        return jsonify({
+            "success": True,
+            "stock": book.stock
+        })
     
 
 #region models
