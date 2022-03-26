@@ -13,6 +13,26 @@ CORS(app)
 db = SQLAlchemy(app)
 
 @cross_origin()
+@app.route("/get_users", methods = ["GET"])
+def get_users():
+    users = User.query.all()
+    usersObj = []
+    for user in users:
+        obj = {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "role": user.role
+        }
+        usersObj.append(obj)
+    
+    return jsonify({
+        "success": True,
+        "users": usersObj
+    })
+
+@cross_origin()
 @app.route("/add_user", methods = ["POST"])
 def add_user():
     data = request.json
@@ -66,6 +86,26 @@ def get_genres():
     return jsonify({
         "success": True,
         "genres": bookGenresObj
+    })
+
+@cross_origin()
+@app.route("/get_books", methods = ["GET"])
+def get_books():
+    books = Book.query.all()
+    booksObj = []
+    for book in books:
+        obj = {
+            "id": book.id,
+            "title": book.title,
+            "author": book.author,
+            "genre": book.genre,
+            "stock": book.stock
+        }
+        booksObj.append(obj)
+    
+    return jsonify({
+        "success": True,
+        "books": booksObj
     })
 
 #region models
