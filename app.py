@@ -1,3 +1,4 @@
+from datetime import datetime
 from os import abort
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
@@ -214,6 +215,59 @@ def get_books_requested():
         "success": True,
         "books": books
     })
+
+@cross_origin()
+@app.route("/get_all_requested", methods = ["GET"])
+def get_all_requested():
+    stmt = select(BookRequested).where(BookRequested.state == "borrowed")
+    books_objs = db.session.execute(stmt)
+    books = []
+    for bookR in books_objs.scalars():
+        user = User.query.get(bookR.student_id)
+        book = Book.query.get(bookR.book_id)
+        
+        dt = bookR.requested_at
+        d = datetime.strftime(dt, '%Y/%m/%d')
+        books.append({
+            "id": bookR.id,
+            "student": user.first_name + " " + user.last_name,
+            "book": book.title,
+            "date": d
+        })
+    
+    return jsonify({
+        "success": True,
+        "books": books
+    })
+
+@cross_origin()
+@app.route("/return_book", methods = ["POST"])
+def return_book():
+    data = request.json
+
+    id_request = data["id_request"]
+    book = data["book"]
+
+    stmt = select(Book).where(Book.title == book)
+    books_obj = db.session.execute(stmt)
+    books = [a for a in books_obj.scalars()]
+
+    # increasing book stock
+    book = books[0]
+    book.stock = book.stock + 1
+    db.session.add(book)
+    db.session.commit()
+
+    # Changin request state to returned
+    requested = BookRequested.query.get(id_request)
+    requested.state = "returned"
+    db.session.add(requested)
+    db.session.commit()
+
+    return jsonify({
+        "success": True
+    })
+
 
 @cross_origin()
 @app.route("/get_book_stock", methods = ["POST"])
