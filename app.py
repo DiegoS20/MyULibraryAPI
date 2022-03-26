@@ -1,3 +1,4 @@
+from os import abort
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS, cross_origin
@@ -147,6 +148,64 @@ def get_books():
         "books": booksObj
     })
 
+
+@cross_origin()
+@app.route("/lend_book", methods = ["POST"])
+def add_request():
+    data = request.json
+
+    student_id = data["student_id"]
+    book_id = data["book_id"]
+
+    book_requested = BookRequested(student_id = student_id, book_id = book_id, state = "borrowed")
+    db.session.add(book_requested)
+    db.session.commit()
+
+    book = Book.query.get(book_id)
+
+    if book is None:
+        abort(404)
+        return
+    else:
+        book.stock = book.stock - 1
+        db.session.add(book)
+        db.session.commit()
+
+        return jsonify({
+            "success": True
+        })
+
+@cross_origin()
+@app.route("/get_books_requested", methods = ["POST"])
+def get_books_requested():
+    data = request.json
+
+    id_user = data["id_user"]
+    user = User.query.get(id_user)
+
+    if user is None:
+        abort(404)
+    else:
+        stmt = select(BookRequested).where(BookRequested.student_id == id_user)
+        books_obj = db.session.execute(stmt)
+
+        books = []
+        for book in books_obj.scalars():
+            book_obj = Book.query.get(book.book_id)
+            if book_obj is not None:
+                books.append({
+                    "id": book_obj.id,
+                    "title": book_obj.title,
+                    "author": book_obj.author,
+                    "genre": book_obj.genre,
+                })
+                
+    return jsonify({
+        "success": True,
+        "books": books
+    })
+    
+
 #region models
 class User(db.Model):
     __tablename__ = 'users'
@@ -178,4 +237,15 @@ class BookGenre(db.Model):
 
     def __repr__(self) -> str:
         return "<BookGenre %r>" % self.title
+
+class BookRequested(db.Model):
+    __tablename__ = 'books_requested'
+    id = db.Column(db.Integer, primary_key = True)
+    student_id = db.Column(db.Integer, nullable = False)
+    book_id = db.Column(db.Integer, nullable = False)
+    state = db.Column(db.String(255), nullable = False)
+    requested_at = db.Column(DateTime(timezone=True), server_default=func.now())
+
+    def __repr__(self) -> str:
+        return "<BooksRequested %r>" % self.id
 #endregion
