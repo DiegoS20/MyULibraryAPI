@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS, cross_origin
 from passlib.hash import sha256_crypt
@@ -32,6 +32,42 @@ def add_user():
         "response": "User added"
     }
 
+@cross_origin()
+@app.route("/add_book", methods = ["POST"])
+def add_book():
+    data = request.json
+
+    title = data["title"]
+    author = data["author"]
+    genre = data["genre"]
+    stock = data["stock"]
+
+    book = Book(title = title, author = author, genre = genre, stock = stock)
+    db.session.add(book)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "response": "Book added"
+    })
+
+@cross_origin()
+@app.route("/get_genres", methods = ["GET"])
+def get_genres():
+    bookGenres = BookGenre.query.all()
+    bookGenresObj = []
+    for bookGenre in bookGenres:
+        obj = {
+            "id": bookGenre.id,
+            "title": bookGenre.title
+        }
+        bookGenresObj.append(obj)
+    
+    return jsonify({
+        "success": True,
+        "genres": bookGenresObj
+    })
+
 #region models
 class User(db.Model):
     __tablename__ = 'users'
@@ -55,4 +91,12 @@ class Book(db.Model):
 
     def __repr__(self) -> str:
         return "<Book %r>" % self.title
+
+class BookGenre(db.Model):
+    __tablename__ = 'book_genre'
+    id = db.Column(db.Integer, primary_key = True)
+    title = db.Column(db.String(255), nullable = False)
+
+    def __repr__(self) -> str:
+        return "<BookGenre %r>" % self.title
 #endregion
