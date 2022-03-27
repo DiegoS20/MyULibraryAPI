@@ -82,16 +82,16 @@ def add_user():
     last_name = data["last_name"]
     email = data["email"]
     role = data["role"]
-    password = sha256_crypt.encrypt(data["password"])
+    password = sha256_crypt.hash(data["password"])
 
     user = User(first_name = first_name, last_name = last_name, email = email, role = role, password = password)
     db.session.add(user)
     db.session.commit()
     
-    return {
-        "success": "true",
+    return jsonify({
+        "success": True,
         "response": "User added"
-    }
+    })
 
 @cross_origin()
 @app.route("/add_book", methods = ["POST"])
@@ -197,7 +197,7 @@ def get_books_requested():
     if user is None:
         abort(404)
     else:
-        stmt = select(BookRequested).where(BookRequested.student_id == id_user)
+        stmt = select(BookRequested).where(BookRequested.student_id == id_user).where(BookRequested.state == "borrowed")
         books_obj = db.session.execute(stmt)
 
         books = []
